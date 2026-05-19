@@ -25,7 +25,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from loguru import logger
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -199,8 +199,6 @@ async def executer_tour(client: AsyncOpenAI, messages: list[dict]) -> str:
 
         # ── Réponse finale — on la streame ──────────────────────────────────
         if choix.finish_reason == "stop":
-            contenu = choix.message.content or ""
-
             # Re-appel avec stream=True pour afficher token par token
             reponse_finale = ""
             with Live(console=console, refresh_per_second=15) as live:
