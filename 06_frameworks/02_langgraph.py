@@ -11,12 +11,11 @@ avec une boucle de retry si le résultat est insuffisant.
 """
 
 import asyncio
-import json
 import os
 from typing import Annotated, TypedDict
 
 from dotenv import load_dotenv
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, BaseMessage
+from langchain_core.messages import HumanMessage, ToolMessage, BaseMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
