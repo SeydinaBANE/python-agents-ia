@@ -24,13 +24,11 @@ from typing import Any, Callable
 from dotenv import load_dotenv
 from loguru import logger
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
-from rich.rule import Rule
 
 load_dotenv()
 console = Console()
