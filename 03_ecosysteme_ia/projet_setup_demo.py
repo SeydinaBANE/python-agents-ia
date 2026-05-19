@@ -21,8 +21,6 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
-
 import httpx
 import typer
 from dotenv import load_dotenv
