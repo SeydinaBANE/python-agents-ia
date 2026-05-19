@@ -2,13 +2,15 @@
 
 ## Documentation officielle
 - **Python** : https://docs.python.org/3/
+- **OpenRouter** : https://openrouter.ai/docs — proxy unifié pour tous les LLMs (utilisé dans ce projet)
 - **Anthropic Claude API** : https://docs.anthropic.com/
-- **OpenAI API** : https://platform.openai.com/docs/
+- **OpenAI SDK** : https://platform.openai.com/docs/ — SDK utilisé pour appeler OpenRouter
 - **Pydantic v2** : https://docs.pydantic.dev/
 - **FastAPI** : https://fastapi.tiangolo.com/
 - **LangChain** : https://python.langchain.com/
 - **CrewAI** : https://docs.crewai.com/
 - **MCP (Model Context Protocol)** : https://modelcontextprotocol.io/
+- **ChromaDB** : https://docs.trychroma.com/
 
 ## Cours recommandés
 - **Python** : "Python for Everybody" (Coursera) — bases solides
@@ -45,54 +47,68 @@ uv add fastapi uvicorn pytest pytest-asyncio docker mcp
 
 ## Exemples de code utiles
 
-### Appel Claude avec tool use
-```python
-import anthropic
+> **Note** : ce projet utilise **OpenRouter** via le SDK `openai` (compatible).
+> Clé API dans `.env` : `OPENROUTER_API_KEY=sk-or-...`
 
-client = anthropic.Anthropic()
+### Appel Claude via OpenRouter avec tool use
+```python
+import json, os
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
 
 tools = [{
-    "name": "get_weather",
-    "description": "Get current weather for a city",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "city": {"type": "string", "description": "City name"}
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Météo d'une ville",
+        "parameters": {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
         },
-        "required": ["city"]
-    }
+    },
 }]
 
-response = client.messages.create(
-    model="claude-sonnet-4-6",
+response = await client.chat.completions.create(
+    model="anthropic/claude-sonnet-4-5",
     max_tokens=1024,
     tools=tools,
-    messages=[{"role": "user", "content": "What's the weather in Paris?"}]
+    messages=[{"role": "user", "content": "Quel temps à Paris ?"}],
 )
 ```
 
-### Agent loop minimal
+### Agent loop minimal (OpenRouter)
 ```python
-import asyncio
-import anthropic
+import asyncio, json, os
+from openai import AsyncOpenAI
 
 async def agent_loop(user_input: str) -> str:
-    client = anthropic.AsyncAnthropic()
+    client = AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+    )
     messages = [{"role": "user", "content": user_input}]
-    
+
     while True:
-        response = await client.messages.create(
-            model="claude-sonnet-4-6",
+        response = await client.chat.completions.create(
+            model="anthropic/claude-sonnet-4-5",
             max_tokens=4096,
             tools=TOOLS,
-            messages=messages
+            tool_choice="auto",
+            messages=messages,
         )
-        
-        if response.stop_reason == "end_turn":
-            return response.content[0].text
-        
+        choix = response.choices[0]
+
+        if choix.finish_reason == "stop":
+            return choix.message.content
+
         # Traiter les tool calls
-        tool_results = await execute_tools(response.content)
-        messages.append({"role": "assistant", "content": response.content})
-        messages.append({"role": "user", "content": tool_results})
+        messages.append(choix.message)
+        for tc in choix.message.tool_calls:
+            result = execute_tool(tc.function.name, json.loads(tc.function.arguments))
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 ```
